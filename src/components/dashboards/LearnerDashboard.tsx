@@ -6,9 +6,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Award, Download, Share2, LogOut, Shield, QrCode } from "lucide-react";
+import { Award, Download, Share2, LogOut, Shield, QrCode, TrendingUp, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
+import { logError, getSecureErrorMessage } from "@/lib/errorHandler";
 
 const LearnerDashboard = () => {
   const { user, signOut } = useAuth();
@@ -17,6 +18,12 @@ const LearnerDashboard = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
   const [selectedCert, setSelectedCert] = useState<any>(null);
   const [qrCode, setQrCode] = useState<string>("");
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    recent: 0,
+    revoked: 0
+  });
 
   useEffect(() => {
     fetchCertificates();
@@ -35,11 +42,24 @@ const LearnerDashboard = () => {
 
       if (error) throw error;
       setCertificates(data || []);
+      
+      // Calculate statistics
+      const total = data?.length || 0;
+      const active = data?.filter(c => c.status === 'active').length || 0;
+      const revoked = data?.filter(c => c.status === 'revoked').length || 0;
+      
+      // Recent = last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recent = data?.filter(c => new Date(c.created_at) > thirtyDaysAgo).length || 0;
+      
+      setStats({ total, active, recent, revoked });
     } catch (error: any) {
+      logError(error, "Fetch Certificates");
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message
+        description: getSecureErrorMessage(error)
       });
     }
   };
@@ -56,7 +76,7 @@ const LearnerDashboard = () => {
       const qr = await QRCode.toDataURL(qrData);
       setQrCode(qr);
     } catch (error) {
-      console.error('Error generating QR code:', error);
+      logError(error, "Generate QR Code");
     }
   };
 
@@ -86,47 +106,104 @@ const LearnerDashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+          <Card className="border-l-4 border-l-secondary hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Certificates</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.total}</h3>
+                </div>
+                <Award className="w-10 h-10 text-secondary/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-primary hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.active}</h3>
+                </div>
+                <Shield className="w-10 h-10 text-primary/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-accent hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Recent (30d)</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.recent}</h3>
+                </div>
+                <TrendingUp className="w-10 h-10 text-accent/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-muted hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Revoked</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.revoked}</h3>
+                </div>
+                <Calendar className="w-10 h-10 text-muted-foreground/20" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="mb-6">
           <h2 className="text-3xl font-bold">Your Certificates</h2>
           <p className="text-muted-foreground mt-1">All your blockchain-verified achievements</p>
         </div>
 
         {certificates.length === 0 ? (
-          <Card>
+          <Card className="animate-fade-in">
             <CardContent className="text-center py-12">
               <Award className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No certificates yet</p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-lg font-medium mb-2">No certificates yet</p>
+              <p className="text-sm text-muted-foreground">
                 Certificates issued to you will appear here
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {certificates.map((cert) => (
-              <Card key={cert.id} className="hover:shadow-lg transition-shadow animate-fade-in">
+            {certificates.map((cert, index) => (
+              <Card 
+                key={cert.id} 
+                className="hover:shadow-lg transition-all hover-scale border-2 hover:border-primary/50"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <Award className="w-8 h-8 text-primary" />
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <Award className="w-7 h-7 text-primary" />
+                    </div>
                     <Badge variant={cert.status === 'active' ? 'default' : 'destructive'}>
                       {cert.status}
                     </Badge>
                   </div>
-                  <CardTitle className="mt-4">{cert.course_name}</CardTitle>
+                  <CardTitle className="mt-4 line-clamp-2">{cert.course_name}</CardTitle>
                   <CardDescription>
                     Issued by {cert.issuer?.name || 'Unknown'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
                       <span className="text-muted-foreground">Date:</span>
                       <span className="font-medium">
                         {new Date(cert.issue_date).toLocaleDateString()}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Transaction ID:</span>
+                    <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+                      <span className="text-muted-foreground">TXN ID:</span>
                       <span className="font-mono text-xs">{cert.txn_id.substring(0, 12)}...</span>
                     </div>
                   </div>
@@ -161,20 +238,20 @@ const LearnerDashboard = () => {
           </DialogHeader>
           <div className="space-y-4">
             {qrCode && (
-              <div className="flex justify-center p-4 bg-muted rounded-lg">
+              <div className="flex justify-center p-6 bg-muted/50 rounded-lg border-2 border-dashed">
                 <img src={qrCode} alt="Certificate QR Code" className="w-48 h-48" />
               </div>
             )}
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Transaction ID:</span>
-                <span className="font-mono text-xs">{selectedCert?.txn_id}</span>
+            <div className="space-y-3 text-sm">
+              <div className="p-3 bg-muted/50 rounded">
+                <p className="text-muted-foreground text-xs mb-1">Transaction ID:</p>
+                <p className="font-mono text-xs break-all">{selectedCert?.txn_id}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Hash:</span>
-                <span className="font-mono text-xs">{selectedCert?.certificate_hash}</span>
+              <div className="p-3 bg-muted/50 rounded">
+                <p className="text-muted-foreground text-xs mb-1">Certificate Hash:</p>
+                <p className="font-mono text-xs break-all">{selectedCert?.certificate_hash}</p>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                 <span className="text-muted-foreground">Status:</span>
                 <Badge variant={selectedCert?.status === 'active' ? 'default' : 'destructive'}>
                   {selectedCert?.status}

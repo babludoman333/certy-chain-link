@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Award, Plus, LogOut, Shield } from "lucide-react";
+import { Award, Plus, LogOut, Shield, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getSecureErrorMessage, logError } from "@/lib/errorHandler";
 import { validateEmail, courseNameSchema } from "@/lib/inputValidation";
@@ -21,6 +21,12 @@ const IssuerDashboard = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    thisMonth: 0,
+    revoked: 0
+  });
   
   const [formData, setFormData] = useState({
     learnerEmail: "",
@@ -45,6 +51,20 @@ const IssuerDashboard = () => {
 
       if (error) throw error;
       setCertificates(data || []);
+      
+      // Calculate statistics
+      const total = data?.length || 0;
+      const active = data?.filter(c => c.status === 'active').length || 0;
+      const revoked = data?.filter(c => c.status === 'revoked').length || 0;
+      
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const thisMonth = data?.filter(c => {
+        const certDate = new Date(c.created_at);
+        return certDate.getMonth() === currentMonth && certDate.getFullYear() === currentYear;
+      }).length || 0;
+      
+      setStats({ total, active, thisMonth, revoked });
     } catch (error: any) {
       logError(error, "Fetch Certificates");
       // Silently fail, don't expose error to user
@@ -157,6 +177,57 @@ const IssuerDashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+          <Card className="border-l-4 border-l-primary hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Issued</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.total}</h3>
+                </div>
+                <Award className="w-10 h-10 text-primary/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-secondary hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.active}</h3>
+                </div>
+                <Shield className="w-10 h-10 text-secondary/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-accent hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">This Month</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.thisMonth}</h3>
+                </div>
+                <Plus className="w-10 h-10 text-accent/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-destructive hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Revoked</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.revoked}</h3>
+                </div>
+                <AlertCircle className="w-10 h-10 text-destructive/20" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-3xl font-bold">Certificates</h2>

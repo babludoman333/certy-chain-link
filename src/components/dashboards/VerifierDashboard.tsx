@@ -8,7 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, CheckCircle2, XCircle, AlertCircle, LogOut, Shield } from "lucide-react";
+import { Search, CheckCircle2, XCircle, AlertCircle, LogOut, Shield, BarChart3, FileCheck } from "lucide-react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSecureErrorMessage, logError } from "@/lib/errorHandler";
 import { validateCertificateSearch } from "@/lib/inputValidation";
@@ -20,6 +21,40 @@ const VerifierDashboard = () => {
   const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [stats, setStats] = useState({
+    totalVerifications: 0,
+    authentic: 0,
+    invalid: 0,
+    revoked: 0
+  });
+
+  useEffect(() => {
+    fetchVerificationStats();
+  }, []);
+
+  const fetchVerificationStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('verifications')
+        .select('verification_status');
+
+      if (error) throw error;
+      
+      const total = data?.length || 0;
+      const authentic = data?.filter(v => v.verification_status === 'authentic').length || 0;
+      const invalid = data?.filter(v => v.verification_status === 'invalid').length || 0;
+      const revoked = data?.filter(v => v.verification_status === 'revoked').length || 0;
+      
+      setStats({
+        totalVerifications: total,
+        authentic,
+        invalid,
+        revoked
+      });
+    } catch (error: any) {
+      logError(error, "Fetch Stats");
+    }
+  };
 
   const handleVerify = async () => {
     if (!searchInput.trim()) {
@@ -102,6 +137,9 @@ const VerifierDashboard = () => {
           verification_status: status
         });
       }
+      
+      // Refresh stats after verification
+      fetchVerificationStats();
     } catch (error: any) {
       logError(error, "Certificate Verification");
       toast({
@@ -169,7 +207,58 @@ const VerifierDashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+          <Card className="border-l-4 border-l-primary hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Verified</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.totalVerifications}</h3>
+                </div>
+                <BarChart3 className="w-10 h-10 text-primary/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-secondary hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Authentic</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.authentic}</h3>
+                </div>
+                <CheckCircle2 className="w-10 h-10 text-secondary/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-destructive hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Invalid</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.invalid}</h3>
+                </div>
+                <XCircle className="w-10 h-10 text-destructive/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-accent hover-scale">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Revoked</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.revoked}</h3>
+                </div>
+                <AlertCircle className="w-10 h-10 text-accent/20" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Certificate Verification</h2>
           <p className="text-muted-foreground">
