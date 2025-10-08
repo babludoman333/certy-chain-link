@@ -8,7 +8,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, name: string, role: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -45,10 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, name: string, role: string) => {
+  const signUp = async (email: string, password: string, name: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -57,15 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    if (!error && data.user) {
-      // Wait for profile creation, then add role
-      setTimeout(async () => {
-        await supabase
-          .from('user_roles')
-          .insert({ user_id: data.user!.id, role } as any);
-      }, 1000);
-    }
-
+    // Role is now assigned automatically via database trigger
+    // All new users are assigned 'learner' role by default
     return { error };
   };
 

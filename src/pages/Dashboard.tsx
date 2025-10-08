@@ -6,6 +6,7 @@ import IssuerDashboard from "@/components/dashboards/IssuerDashboard";
 import LearnerDashboard from "@/components/dashboards/LearnerDashboard";
 import VerifierDashboard from "@/components/dashboards/VerifierDashboard";
 import { Loader2 } from "lucide-react";
+import { logError } from "@/lib/errorHandler";
 
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -30,12 +31,13 @@ const Dashboard = () => {
         .from('user_roles')
         .select('role')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setUserRole(data.role);
+      setUserRole(data?.role || null);
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      logError(error, "Fetch User Role");
+      // Don't expose error to user, just fail gracefully
     } finally {
       setLoading(false);
     }

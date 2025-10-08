@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Award, Plus, LogOut, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getSecureErrorMessage, logError } from "@/lib/errorHandler";
+import { validateEmail, courseNameSchema } from "@/lib/inputValidation";
 
 const IssuerDashboard = () => {
   const { user, signOut } = useAuth();
@@ -44,23 +46,18 @@ const IssuerDashboard = () => {
       if (error) throw error;
       setCertificates(data || []);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
+      logError(error, "Fetch Certificates");
+      // Silently fail, don't expose error to user
     }
   };
 
-  const generateHash = (data: string): string => {
-    // Simple hash generation (in production, use proper crypto library)
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(16, '0');
+  const generateCryptoHash = async (data: string): Promise<string> => {
+    // Use Web Crypto API for proper SHA-256 hashing
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,21 +65,32 @@ const IssuerDashboard = () => {
     setLoading(true);
 
     try {
-      // Find learner by email
+      // Validate email input
+      const emailValidation = validateEmail(formData.learnerEmail);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error || "Invalid email");
+      }
+
+      // Validate course name
+      courseNameSchema.parse(formData.courseName);
+
+      // Find learner by email using parameterized query
       const { data: learnerProfile, error: learnerError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', formData.learnerEmail)
-        .single();
+        .eq('email', emailValidation.sanitized)
+        .maybeSingle();
 
-      if (learnerError || !learnerProfile) {
-        throw new Error("Learner not found with this email");
+      if (learnerError) throw learnerError;
+      
+      if (!learnerProfile) {
+        throw new Error("Learner account not found");
       }
 
-      // Generate certificate data
-      const certificateData = `${formData.courseName}-${formData.learnerEmail}-${formData.issueDate}`;
-      const hash = generateHash(certificateData);
-      const txnId = `TXN-${Date.now()}-${hash.substring(0, 8)}`;
+      // Generate certificate data with proper cryptographic hash
+      const certificateData = `${formData.courseName}-${emailValidation.sanitized}-${formData.issueDate}-${Date.now()}`;
+      const hash = await generateCryptoHash(certificateData);
+      const txnId = `TXN-${Date.now()}-${hash.substring(0, 6)}`;
 
       // Insert certificate
       const { error: certError } = await supabase
@@ -100,8 +108,8 @@ const IssuerDashboard = () => {
       if (certError) throw certError;
 
       toast({
-        title: "Certificate Issued!",
-        description: `Certificate for ${formData.courseName} has been issued successfully.`
+        title: "Certificate Issued",
+        description: "Certificate has been issued successfully",
       });
 
       setIsDialogOpen(false);
@@ -112,10 +120,11 @@ const IssuerDashboard = () => {
       });
       fetchCertificates();
     } catch (error: any) {
+      logError(error, "Issue Certificate");
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message
+        description: getSecureErrorMessage(error),
       });
     } finally {
       setLoading(false);

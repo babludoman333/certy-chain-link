@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, CheckCircle2, XCircle, AlertCircle, LogOut, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getSecureErrorMessage, logError } from "@/lib/errorHandler";
+import { validateCertificateSearch } from "@/lib/inputValidation";
 
 const VerifierDashboard = () => {
   const { signOut } = useAuth();
@@ -24,7 +26,18 @@ const VerifierDashboard = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please enter a transaction ID or certificate hash"
+        description: "Please enter a search query"
+      });
+      return;
+    }
+
+    // Validate input
+    const validation = validateCertificateSearch(searchInput);
+    if (!validation.isValid) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: validation.error || "Invalid search query"
       });
       return;
     }
@@ -33,49 +46,68 @@ const VerifierDashboard = () => {
     setVerificationResult(null);
 
     try {
-      // Search by transaction ID or hash
-      const { data, error } = await supabase
+      const sanitizedInput = validation.sanitized;
+      
+      // Use parameterized queries instead of string interpolation
+      // Search by txn_id
+      let { data: certByTxn } = await supabase
         .from('certificates')
         .select(`
           *,
           learner:learner_id(name, email),
           issuer:issuer_id(name)
         `)
-        .or(`txn_id.eq.${searchInput},certificate_hash.eq.${searchInput}`)
-        .single();
+        .eq('txn_id', sanitizedInput)
+        .maybeSingle();
 
-      if (error || !data) {
+      // If not found by txn_id, search by hash
+      if (!certByTxn) {
+        const { data: certByHash } = await supabase
+          .from('certificates')
+          .select(`
+            *,
+            learner:learner_id(name, email),
+            issuer:issuer_id(name)
+          `)
+          .eq('certificate_hash', sanitizedInput.toLowerCase())
+          .maybeSingle();
+        
+        certByTxn = certByHash;
+      }
+
+      if (!certByTxn) {
         setVerificationResult({
           status: 'invalid',
-          message: 'Certificate not found in blockchain'
+          message: 'Certificate not found'
         });
         
-        // Log verification attempt
+        // Log verification attempt (null certificate_id for invalid)
         await supabase.from('verifications').insert({
           certificate_id: null,
           verification_status: 'invalid'
         });
       } else {
-        const status = data.status === 'active' ? 'authentic' : 'revoked';
+        const status = certByTxn.status === 'active' ? 'authentic' : 'revoked';
         setVerificationResult({
           status,
-          certificate: data,
+          certificate: certByTxn,
           message: status === 'authentic' 
-            ? 'Certificate is authentic and verified on blockchain'
+            ? 'Certificate is authentic and verified'
             : 'Certificate has been revoked'
         });
 
         // Log verification
         await supabase.from('verifications').insert({
-          certificate_id: data.id,
+          certificate_id: certByTxn.id,
           verification_status: status
         });
       }
     } catch (error: any) {
+      logError(error, "Certificate Verification");
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message
+        description: getSecureErrorMessage(error),
       });
     } finally {
       setLoading(false);
