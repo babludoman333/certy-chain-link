@@ -89,24 +89,43 @@ const LearnerDashboard = () => {
     navigate("/auth");
   };
 
-  const handleDownloadCertificate = (cert: any) => {
-    // Get a mock certificate template
-    const templates = [cert1, cert2, cert3];
-    const templateIndex = Math.abs(cert.id.charCodeAt(0)) % templates.length;
-    const certificateUrl = templates[templateIndex];
-    
-    // Create a link and trigger download
-    const link = document.createElement('a');
-    link.href = certificateUrl;
-    link.download = `certificate-${cert.course_name.replace(/\s+/g, '-')}-${cert.txn_id.substring(0, 8)}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: "Downloaded",
-      description: "Certificate downloaded successfully"
-    });
+  const handleDownloadCertificate = async (cert: any) => {
+    try {
+      // Get a mock certificate template
+      const templates = [cert1, cert2, cert3];
+      const templateIndex = Math.abs(cert.id.charCodeAt(0)) % templates.length;
+      const certificateUrl = templates[templateIndex];
+      
+      // Fetch the image as a blob
+      const response = await fetch(certificateUrl);
+      const blob = await response.blob();
+      
+      // Create object URL from blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Create a link and trigger download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `certificate-${cert.course_name.replace(/\s+/g, '-')}-${cert.txn_id.substring(0, 8)}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the object URL
+      URL.revokeObjectURL(blobUrl);
+      
+      toast({
+        title: "Downloaded",
+        description: "Certificate downloaded successfully"
+      });
+    } catch (error) {
+      logError(error, "Download Certificate");
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: "Could not download certificate. Please try again."
+      });
+    }
   };
 
   return (
