@@ -31,10 +31,10 @@ const Index = () => {
               Secure, tamper-proof certificate issuance and verification powered by blockchain technology
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
+              <Button size="lg" onClick={() => navigate("/auth?mode=signup")} className="text-lg px-8">
                 Get Started
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="text-lg px-8">
+              <Button size="lg" variant="outline" onClick={() => navigate("/auth?mode=login")} className="text-lg px-8">
                 Sign In
               </Button>
             </div>
@@ -155,7 +155,7 @@ const Index = () => {
           <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
             Join the blockchain revolution in certificate verification. Tamper-proof, secure, and instantly verifiable.
           </p>
-          <Button size="lg" variant="secondary" onClick={() => navigate("/auth")} className="text-lg px-8">
+          <Button size="lg" variant="secondary" onClick={() => navigate("/auth?mode=signup")} className="text-lg px-8">
             Create Your Account
           </Button>
         </div>
