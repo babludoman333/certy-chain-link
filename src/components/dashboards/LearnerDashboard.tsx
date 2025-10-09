@@ -6,7 +6,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Award, Download, Share2, LogOut, Shield, QrCode, TrendingUp, Calendar } from "lucide-react";
+import { Award, Download, Share2, LogOut, Shield, QrCode, TrendingUp, Calendar, ArrowLeft } from "lucide-react";
+import cert1 from "@/assets/certificates/certificate-template-1.jpg";
+import cert2 from "@/assets/certificates/certificate-template-2.jpg";
+import cert3 from "@/assets/certificates/certificate-template-3.jpg";
+import { generateBlockchainData } from "@/lib/blockchainUtils";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { logError, getSecureErrorMessage } from "@/lib/errorHandler";
@@ -85,11 +89,34 @@ const LearnerDashboard = () => {
     navigate("/auth");
   };
 
+  const handleDownloadCertificate = (cert: any) => {
+    // Get a mock certificate template
+    const templates = [cert1, cert2, cert3];
+    const templateIndex = Math.abs(cert.id.charCodeAt(0)) % templates.length;
+    const certificateUrl = templates[templateIndex];
+    
+    // Create a link and trigger download
+    const link = document.createElement('a');
+    link.href = certificateUrl;
+    link.download = `certificate-${cert.course_name.replace(/\s+/g, '-')}-${cert.txn_id.substring(0, 8)}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Downloaded",
+      description: "Certificate downloaded successfully"
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/5 via-background to-primary/5">
       <header className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
               <Award className="w-6 h-6 text-secondary-foreground" />
             </div>
@@ -216,6 +243,13 @@ const LearnerDashboard = () => {
                       <QrCode className="w-4 h-4 mr-2" />
                       View QR
                     </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleDownloadCertificate(cert)}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => {
                       navigator.clipboard.writeText(cert.txn_id);
                       toast({ title: "Copied!", description: "Transaction ID copied to clipboard" });
@@ -250,6 +284,14 @@ const LearnerDashboard = () => {
               <div className="p-3 bg-muted/50 rounded">
                 <p className="text-muted-foreground text-xs mb-1">Certificate Hash:</p>
                 <p className="font-mono text-xs break-all">{selectedCert?.certificate_hash}</p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded">
+                <p className="text-muted-foreground text-xs mb-1">Blockchain Timestamp:</p>
+                <p className="font-mono text-xs">{selectedCert && new Date(generateBlockchainData().timestamp).toLocaleString()}</p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded">
+                <p className="text-muted-foreground text-xs mb-1">Issuer ID:</p>
+                <p className="font-mono text-xs break-all">{selectedCert?.issuer_id}</p>
               </div>
               <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                 <span className="text-muted-foreground">Status:</span>

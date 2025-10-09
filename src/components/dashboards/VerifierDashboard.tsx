@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, CheckCircle2, XCircle, AlertCircle, LogOut, Shield, BarChart3, FileCheck } from "lucide-react";
+import { Search, CheckCircle2, XCircle, AlertCircle, LogOut, Shield, BarChart3, FileCheck, ArrowLeft } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSecureErrorMessage, logError } from "@/lib/errorHandler";
@@ -192,6 +192,9 @@ const VerifierDashboard = () => {
       <header className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
               <Shield className="w-6 h-6 text-accent-foreground" />
             </div>
