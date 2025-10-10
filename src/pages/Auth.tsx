@@ -37,6 +37,13 @@ const Auth = () => {
     }
   }, [searchParams]);
 
+  // Auto-select email when verifier is chosen
+  useEffect(() => {
+    if (role === "verifier") {
+      setAuthMethod("email");
+    }
+  }, [role]);
+
   const handleGoogleSignIn = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -187,32 +194,34 @@ const Auth = () => {
                   </RadioGroup>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Sign up with</Label>
-                  <RadioGroup value={authMethod} onValueChange={(value: "email" | "phone" | "aadhaar") => setAuthMethod(value)}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="email" id="email-method" />
-                      <Label htmlFor="email-method" className="font-normal cursor-pointer flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        Email
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="phone" id="phone-method" />
-                      <Label htmlFor="phone-method" className="font-normal cursor-pointer flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        Phone Number
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="aadhaar" id="aadhaar-method" />
-                      <Label htmlFor="aadhaar-method" className="font-normal cursor-pointer flex items-center gap-2">
-                        <CreditCard className="w-4 h-4" />
-                        Aadhaar Number
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+                {role === "learner" && (
+                  <div className="space-y-2">
+                    <Label>Sign up with</Label>
+                    <RadioGroup value={authMethod} onValueChange={(value: "email" | "phone" | "aadhaar") => setAuthMethod(value)}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="email" id="email-method" />
+                        <Label htmlFor="email-method" className="font-normal cursor-pointer flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Email
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="phone" id="phone-method" />
+                        <Label htmlFor="phone-method" className="font-normal cursor-pointer flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          Phone Number
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="aadhaar" id="aadhaar-method" />
+                        <Label htmlFor="aadhaar-method" className="font-normal cursor-pointer flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          Aadhaar Number
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
               </>
             )}
             
