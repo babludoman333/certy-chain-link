@@ -69,6 +69,16 @@ const Auth = () => {
     try {
       if (authMethod === "email") {
         emailSchema.parse(email);
+        
+        // For verifiers, block personal email domains
+        if (!isLogin && role === "verifier") {
+          const personalDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'protonmail.com', 'aol.com'];
+          const emailDomain = email.split('@')[1]?.toLowerCase();
+          
+          if (personalDomains.includes(emailDomain)) {
+            throw new Error("Verifiers must use a company email address, not personal email providers");
+          }
+        }
       } else if (authMethod === "phone") {
         if (!phone || phone.length < 10) {
           throw new Error("Please enter a valid phone number");
@@ -208,15 +218,25 @@ const Auth = () => {
             
             {authMethod === "email" && (
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">
+                  Email
+                  {!isLogin && role === "verifier" && (
+                    <span className="text-xs text-muted-foreground ml-2">(Company email required)</span>
+                  )}
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder={!isLogin && role === "verifier" ? "name@company.com" : "your@email.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
+                {!isLogin && role === "verifier" && (
+                  <p className="text-xs text-muted-foreground">
+                    Personal email providers (Gmail, Yahoo, etc.) are not allowed for verifiers
+                  </p>
+                )}
               </div>
             )}
             
