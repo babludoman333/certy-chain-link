@@ -8,7 +8,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
+  signUp: (identifier: string, password: string, name: string, role: "learner" | "verifier", authMethod: "email" | "phone" | "aadhaar") => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -45,20 +45,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (identifier: string, password: string, name: string, role: "learner" | "verifier", authMethod: "email" | "phone" | "aadhaar") => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
-      email,
+    let signUpData: any = {
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: { name }
+        data: { 
+          name,
+          role,
+          auth_method: authMethod
+        }
       }
-    });
+    };
 
-    // Role is now assigned automatically via database trigger
-    // All new users are assigned 'learner' role by default
+    // Set the appropriate identifier based on auth method
+    if (authMethod === "email") {
+      signUpData.email = identifier;
+    } else if (authMethod === "phone") {
+      signUpData.phone = identifier;
+    } else {
+      // For Aadhaar, we'll use email with a special format as a workaround
+      // In production, this would need proper Aadhaar integration
+      signUpData.email = `${identifier}@aadhaar.temp`;
+      signUpData.options.data.aadhaar = identifier;
+    }
+
+    const { error } = await supabase.auth.signUp(signUpData);
+
+    // Role is assigned based on user selection
+    // The trigger will use the role from user metadata
     return { error };
   };
 
