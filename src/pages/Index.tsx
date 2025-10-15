@@ -21,7 +21,7 @@ const Index = () => {
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="container mx-auto px-4 py-20 text-center">
           <div className="mx-auto max-w-3xl animate-fade-up">
-            <div className="mb-6 inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl animate-float shadow-lg hover:shadow-2xl transition-shadow duration-300">
+            <div className="mb-6 inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl shadow-lg hover:shadow-2xl hover:scale-110 transition-all duration-300">
               <Shield className="w-10 h-10 text-primary-foreground" />
             </div>
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-fade-in">
